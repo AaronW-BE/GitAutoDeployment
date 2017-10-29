@@ -12,6 +12,10 @@
  */
 
 require_once './functions.php';
+require_once './ConfOperator.php';
 
-$code = git_clone('https://github.com/vuejs/vue-cli.git', 'd:/test/test', $result);
-echo $code;
+/*$code = git_clone('https://github.com/vuejs/vue-cli.git', 'd:/test/test', $result);
+echo $code;*/
+
+$c = new ConfOperator('./test.conf');
+$c->setItem('gitosc.name', 'abcdefg');

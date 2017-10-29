@@ -38,11 +38,15 @@
  *
  */
 class ConfOperator {
-
     const ERRCODE = [
         'PARAMETER_FORMAT_ERROR' => -1001,
-        'PARAMETER_NOT_FOUND' => -4004
+        'PARAMETER_NOT_FOUND' => -4004,
+        'PARAMETER_ERROR' => -4001,
     ];
+
+    const L_GROUP = 0;
+    const L_ITEM = 1;
+
     public $filename;
 
     private $fileHandle;
@@ -66,6 +70,15 @@ class ConfOperator {
     }
 
     /**
+     * close opened file handle
+     */
+    public function __destruct() {
+        if ($this->fileHandle) {
+            fclose($this->fileHandle);
+        }
+    }
+
+    /**
      * Get all params arr from the conf file
      * @return mixed
      */
@@ -78,7 +91,7 @@ class ConfOperator {
      * @return null | array
      */
     public function getGroupItem($groupName) {
-        return in_array($groupName, $this->paramArr) ? $this->paramArr[$groupName]: null;
+        return isset($this->paramArr[$groupName]) ? $this->paramArr[$groupName]: null;
     }
 
 
@@ -95,21 +108,132 @@ class ConfOperator {
         }
 
         $paramGroup = $this->getGroupItem($params[0]);
-        return in_array($params[1], $paramGroup) ? $this->getGroupItem($params[0]) : null;
+        return isset($paramGroup[$params[1]]) ? $this->getGroupItem($params[0]) : null;
     }
 
     /**
      * The same method against getItem parameter,
-     * It's use to save a exist config item or insert a not exist config item
+     * It's use to save a existing config item or insert a not existing config item
      *
      * @param $itemName
      */
-    private function setItem($itemName, $value) {
-        $params = explode('.', $itemName);
+    public function setItem($itemName, $value) {
+        $params = explode('.', trim($itemName));
         if (!$params || count($params) != 2) {
             throw new Exception('Argument 1 need be a dot format for conf file',
                 self::ERRCODE['PARAMETER_FORMAT_ERROR']);
         }
+
+        # checkif there is exists a group named given
+        $groupName = $params[0];
+        $item = $params[1];
+
+        if ($this->getGroupItem($groupName) == null) {
+            # if group is not found, seek the file handle to file tail,
+            fseek($this->fileHandle, 0, SEEK_END);
+            fputs($this->fileHandle, "\n");
+            fputs($this->fileHandle, $this->assembleConfigString($groupName, null, self::L_GROUP));
+
+            # move handle to the next line, and write string
+            fputs($this->fileHandle, "\n");
+            fputs($this->fileHandle, $this->assembleConfigString($item, trim($value), self::L_ITEM));
+        } else {
+
+
+            $modify_mode = $this->getItem(implode('.', $params)) == null ? false : true;
+
+            # get the group name with file handle position
+            #
+            # first need to move file handle to file header
+            fseek($this->fileHandle, 0, SEEK_SET);
+
+            while (!feof($this->fileHandle)) {
+
+                $lineString = fgets($this->fileHandle);
+
+                # If there exists a config item, we need to modify it
+                if ($modify_mode) {
+                    if (
+                        $this->parseItemLine($lineString)[0] == $item
+                    ) {
+
+//                        fputs($this->fileHandle, $this->assembleConfigString($item, $value,
+//                            self::L_ITEM));
+
+                        return true;
+                    }
+                }else{
+
+                    # if catch the group name we would confirm the group name with file handle
+                    if (trim($lineString) == $this->assembleConfigString($groupName, '',
+                            self::L_GROUP)) {
+
+                        # While get the group label need to move current file handle to next line
+                        # for write a config item, and break this loop
+                        #
+                        # Notice: fseek cannot move the file handle to the not exists position, means that
+                        # fseek function can move max langth is eof only
+                        # So, there need put a line break to add new line, there just put a \n label, need optimize
+
+                        fputs($this->fileHandle, "\n");
+                        break;
+                    }
+                }
+
+            }
+
+            # write config item
+            fputs($this->fileHandle, $this->assembleConfigString($item, $value, self::L_ITEM));
+        }
+
+    }
+
+    /**
+     * assemble the config file line string
+     * @param $item
+     * @param $value
+     * @param $type
+     */
+    private function assembleConfigString($item, $value, $type) {
+        $_types = [
+            self::L_GROUP, self::L_ITEM
+        ];
+        if (!in_array($type, $_types)) {
+            throw new Exception('parameter of type is error',self::ERRCODE['PARAMETER_ERROR']);
+        }
+
+        $lineString = "";
+        if ($type == $_types[0]) {
+            $lineString = '[' . trim($item) . ']';
+        }else if ($type == $_types[1]) {
+            $lineString = implode('=', [$item, $value]);
+        }
+        echo $lineString;
+        return $lineString;
+    }
+
+    /**
+     * Parse the string to readable format
+     * @param $lineString
+     * @return array|bool
+     */
+    private function parseItemLine($lineString) {
+        $lineString = trim($lineString);
+        $resArr = explode('=', $lineString);
+        if (is_array($resArr) && count($resArr) == 2) {
+            return [
+                trim($resArr[0]),
+                trim($resArr[1])
+            ];
+        }
+        return false;
+    }
+
+    /**
+     * get handle position
+     */
+    private function getHandlePosition() {
+        return $this->fileHandle != null ? ftell($this->fileHandle) : null;
     }
 
 
@@ -135,7 +259,7 @@ class ConfOperator {
                 case 'comments':
                     break;
                 case 'param':
-                    $arrParased[$lastKey][] = $lineData;
+                    $arrParased[$lastKey][$lineData[0]] = $lineData[1];
                     break;
                 default:
                     break;
@@ -189,7 +313,7 @@ class ConfOperator {
                 if (in_array(substr($lineArr[1], 0, 1), ['\'', '\"'])){
                     $lineArr[1] = substr($lineArr[1], 1, strlen($lineArr[1]) - 2);
                 }
-                $data[$lineArr[0]] = $lineArr[1];
+                $data = $lineArr;
             } else {
                 $type = 'null';
                 $data = null;

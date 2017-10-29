@@ -45,7 +45,7 @@ if (!$git_password) {
     );
 }
 
-# if the password is exist, get the enccypt passwod and store in conf file
+# if the password exists, get the enccypt passwod and store in conf file
 
 if (!file_exists($git_conf_path)) {
     $first_request = true;
