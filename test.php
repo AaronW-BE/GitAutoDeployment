@@ -11,11 +11,12 @@
  * Time: 18:38
  */
 
-require_once './functions.php';
-require_once './ConfOperator.php';
+require_once './core/functions.php';
+require_once './core/ConfOperator.php';
 
 /*$code = git_clone('https://github.com/vuejs/vue-cli.git', 'd:/test/test', $result);
 echo $code;*/
 
-$c = new ConfOperator('./test.conf');
-$c->setItem('gitosc.name', 'abcdefg');
+$c = new ConfOperator('./tests.conf');
+$c->setItem('git.aar', 'abcdefg');
+$c->setItem('git.abc', 'asfsafasdfsadfds');

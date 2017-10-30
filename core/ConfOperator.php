@@ -129,6 +129,7 @@ class ConfOperator {
         $item = $params[1];
 
         if ($this->getGroupItem($groupName) == null) {
+            echo "not exists a group name {$groupName} \n";
             # if group is not found, seek the file handle to file tail,
             fseek($this->fileHandle, 0, SEEK_END);
             fputs($this->fileHandle, "\n");
@@ -137,36 +138,54 @@ class ConfOperator {
             # move handle to the next line, and write string
             fputs($this->fileHandle, "\n");
             fputs($this->fileHandle, $this->assembleConfigString($item, trim($value), self::L_ITEM));
+            fputs($this->fileHandle, "\n");
         } else {
 
 
             $modify_mode = $this->getItem(implode('.', $params)) == null ? false : true;
+
+            echo $modify_mode ? 'modify mode' : 'add mode';
 
             # get the group name with file handle position
             #
             # first need to move file handle to file header
             fseek($this->fileHandle, 0, SEEK_SET);
 
+            # Build the new temp file for exchange the content will be replaced, if build fail, throw a
+            # exception directly
+            $tempfile = tempnam('./tmp', 'temp');
+            $tempfile_handle = fopen($tempfile, 'w');
+            if (!$tempfile_handle) {
+                throw new Exception('temp file create failed');
+            }
+
+            $flag_catch_group = false;
             while (!feof($this->fileHandle)) {
 
                 $lineString = fgets($this->fileHandle);
 
-                # If there exists a config item, we need to modify it
-                if ($modify_mode) {
-                    if (
-                        $this->parseItemLine($lineString)[0] == $item
-                    ) {
+                # if catch the group name we would confirm the group name with file handle
+                if (trim($lineString) == $this->assembleConfigString($groupName, '',
+                        self::L_GROUP)) {
+                    echo "\n catch the group {$groupName} \n";
+                    $flag_catch_group = true;
+                    fputs($tempfile_handle, $lineString);
+                    continue;
+                }
 
-//                        fputs($this->fileHandle, $this->assembleConfigString($item, $value,
-//                            self::L_ITEM));
-
-                        return true;
-                    }
-                }else{
-
-                    # if catch the group name we would confirm the group name with file handle
-                    if (trim($lineString) == $this->assembleConfigString($groupName, '',
-                            self::L_GROUP)) {
+                if ($flag_catch_group) {
+                    # If there exists a config item, we need to modify it
+                    if ($modify_mode) {
+                        if (
+                            $this->parseItemLine($lineString)[0] == $item
+                        ) {
+                            echo "\n ready to write string \n";
+                            fputs($tempfile_handle, $this->assembleConfigString($item, $value, self::L_ITEM));
+                            fputs($tempfile_handle, "\n");
+                            $flag_catch_group = false;
+                            continue;
+                        }
+                    }else {
 
                         # While get the group label need to move current file handle to next line
                         # for write a config item, and break this loop
@@ -175,17 +194,27 @@ class ConfOperator {
                         # fseek function can move max langth is eof only
                         # So, there need put a line break to add new line, there just put a \n label, need optimize
 
-                        fputs($this->fileHandle, "\n");
-                        break;
+                        # write config item
+                        echo "ready to write string {$item} - {$value}";
+                        fputs($tempfile_handle, $lineString);
+                        fputs($tempfile_handle, $this->assembleConfigString($item, $value, self::L_ITEM));
+                        fputs($tempfile_handle, "\n");
+                        $flag_catch_group = false;
+                        continue;
                     }
                 }
+                fputs($tempfile_handle, $lineString);
 
             }
 
-            # write config item
-            fputs($this->fileHandle, $this->assembleConfigString($item, $value, self::L_ITEM));
+            # copy the temp file to the origin conf file, and delete temp file
+            copy($tempfile, $this->filename);
+
+            fclose($tempfile_handle);
+            unlink($tempfile);
         }
 
+        $this->content();
     }
 
     /**
@@ -208,7 +237,6 @@ class ConfOperator {
         }else if ($type == $_types[1]) {
             $lineString = implode('=', [$item, $value]);
         }
-        echo $lineString;
         return $lineString;
     }
 
@@ -245,6 +273,8 @@ class ConfOperator {
         $lineType = "";
 
         $arrParased = [];
+
+        fseek($this->fileHandle, 0, SEEK_SET);
 
         while (!feof($this->fileHandle)) {
             $_currentLine = fgets($this->fileHandle);
