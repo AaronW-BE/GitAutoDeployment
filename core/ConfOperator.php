@@ -108,7 +108,7 @@ class ConfOperator {
         }
 
         $paramGroup = $this->getGroupItem($params[0]);
-        return isset($paramGroup[$params[1]]) ? $this->getGroupItem($params[0]) : null;
+        return isset($paramGroup[$params[1]]) ? $paramGroup[$params[1]] : null;
     }
 
     /**
@@ -129,7 +129,7 @@ class ConfOperator {
         $item = $params[1];
 
         if ($this->getGroupItem($groupName) == null) {
-            echo "not exists a group name {$groupName} \n";
+//            echo "not exists a group name {$groupName} \n";
             # if group is not found, seek the file handle to file tail,
             fseek($this->fileHandle, 0, SEEK_END);
             fputs($this->fileHandle, "\n");
@@ -144,7 +144,7 @@ class ConfOperator {
 
             $modify_mode = $this->getItem(implode('.', $params)) == null ? false : true;
 
-            echo $modify_mode ? 'modify mode' : 'add mode';
+//            echo $modify_mode ? 'modify mode' : 'add mode';
 
             # get the group name with file handle position
             #
@@ -167,7 +167,7 @@ class ConfOperator {
                 # if catch the group name we would confirm the group name with file handle
                 if (trim($lineString) == $this->assembleConfigString($groupName, '',
                         self::L_GROUP)) {
-                    echo "\n catch the group {$groupName} \n";
+//                    echo "\n catch the group {$groupName} \n";
                     $flag_catch_group = true;
                     fputs($tempfile_handle, $lineString);
                     continue;
@@ -179,7 +179,7 @@ class ConfOperator {
                         if (
                             $this->parseItemLine($lineString)[0] == $item
                         ) {
-                            echo "\n ready to write string \n";
+//                            echo "\n ready to write string \n";
                             fputs($tempfile_handle, $this->assembleConfigString($item, $value, self::L_ITEM));
                             fputs($tempfile_handle, "\n");
                             $flag_catch_group = false;
@@ -195,7 +195,7 @@ class ConfOperator {
                         # So, there need put a line break to add new line, there just put a \n label, need optimize
 
                         # write config item
-                        echo "ready to write string {$item} - {$value}";
+//                        echo "ready to write string {$item} - {$value}";
                         fputs($tempfile_handle, $lineString);
                         fputs($tempfile_handle, $this->assembleConfigString($item, $value, self::L_ITEM));
                         fputs($tempfile_handle, "\n");

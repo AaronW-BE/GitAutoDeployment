@@ -14,7 +14,7 @@
 function execShell($cmd, $cwd, &$result, $env = null) {
     error_reporting(E_ALL);
 
-    $error_file_path = "./tmp/error-output.txt";
+    $error_file_path = "./error-output.txt";
     $descriptorspec = array(
         0 => array("pipe", "r"),  // 标准输入，子进程从此管道中读取数据
         1 => array("pipe", "w"),  // 标准输出，子进程向此管道中写入数据
@@ -72,6 +72,7 @@ function git_pull ($remoteLabel = 'origin', $remoteBranch = 'master', $params = 
  */
 function git_clone($git_url, $cwd, &$result, $env = null) {
     $cmd = "git clone {$git_url}";
+    echo "will excute cmd : $cmd,  cwd is $cwd";
     return execShell($cmd, $cwd, $result, $env);
 }
 

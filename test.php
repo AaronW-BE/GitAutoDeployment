@@ -18,5 +18,4 @@ require_once './core/ConfOperator.php';
 echo $code;*/
 
 $c = new ConfOperator('./tests.conf');
-$c->setItem('git.aar', 'abcdefg');
-$c->setItem('git.abc', 'asfsafasdfsadfds');
+echo $c->getItem('git.aar');

@@ -19,6 +19,7 @@ define('TAG_SYS', 'SYS');
 define('TAG_COMMON', 'COMMON');
 
 require_once('./core/ConfOperator.php');
+require_once('./core/functions.php');
 require_once('./core/Logger.php');
 
 
@@ -96,8 +97,8 @@ if (!isset($conf)) {
 # check the password whether equals conf file stored crypted
 # if not equal: return a 401 Http status code to remote
 
-$salt = $conf->getItem('git.firstTime');
-if (sha1($git_password . $salt) != $conf->getItem('git.crypted-pass') ) {
+$salt = $conf->getItem('common.firstTime');
+if (sha1($git_password . $salt) != $conf->getItem('common.crypted-pass') ) {
     header('HTTP/1.0 401 Unauthorized');
     exit(
     json_encode([
@@ -113,7 +114,7 @@ if (sha1($git_password . $salt) != $conf->getItem('git.crypted-pass') ) {
 $cwd = __DIR__;
 
 # When it's first time, check the config for clone the repo
-if ($conf->getItem('git.inited') == null) {
+if ($conf->getItem('git.inited') != true) {
     $resc = git_clone($remoteData->project->git_ssh_url, $cwd, $result);
     if ($resc != 0) {
         $logger->info('execute git command failed, code is '.$resc." result: ".$result, TAG_SYS);
